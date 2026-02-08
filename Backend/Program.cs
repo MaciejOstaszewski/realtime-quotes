@@ -24,6 +24,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<CandleStore>();
 
 builder.Services.AddSingleton<WsHub>();
+builder.Services.AddSingleton<CandleAggregator>();
+builder.Services.AddSingleton<QuotePipeline>();
 
 var app = builder.Build();
 
