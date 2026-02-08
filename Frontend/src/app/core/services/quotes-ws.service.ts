@@ -12,6 +12,9 @@ export class QuotesWsService {
     private readonly statusSubject = new BehaviorSubject<ConnectionStatus>('disconnected');
     readonly status$ = this.statusSubject.asObservable();
 
+    private readonly errorSubject = new BehaviorSubject<string | null>(null);
+    readonly error$ = this.errorSubject.asObservable();
+
     private readonly messagesSubject = new Subject<WsMessage>();
     readonly messages$: Observable<WsMessage> = this.messagesSubject.asObservable();
 
@@ -32,6 +35,7 @@ export class QuotesWsService {
         this.socket.onopen = () => {
             this.zone.run(() => {
                 this.reconnectAttempts = 0;
+                this.errorSubject.next(null);
                 this.statusSubject.next('connected');
             });
         };
@@ -46,17 +50,22 @@ export class QuotesWsService {
             });
         };
 
-        this.socket.onerror = () => {
-        };
-
-        this.socket.onclose = () => {
+        this.socket.onclose = (ev: CloseEvent) => {
             this.zone.run(() => {
                 this.statusSubject.next('disconnected');
+
+                if (!ev.wasClean) {
+                    this.errorSubject.next('WebSocket connecion lost. Trying to reconnect...');
+                }
             });
 
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
                 setTimeout(() => this.connect(), 5000);
+            } else {
+                this.zone.run(() => {
+                    this.errorSubject.next('Failed to reconnect (3 attempts). Refresh the page or check the backend.');
+                });
             }
         };
     }
