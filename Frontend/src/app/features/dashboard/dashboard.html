@@ -16,28 +16,24 @@
   }
 
   <div class="layout">
-    <section class="card">
+    <section class="card quote-bar">
       <h2>BTCUSD</h2>
 
       @if (!quote()) {
         <div class="muted">Waiting for quote…</div>
       } @else {
-        <div class="grid">
-          <div>
-            <div class="label">BID</div>
-            <div class="value" [class]="bidClass()">
-              {{ quote()!.bid }}
-            </div>
+        <div class="quote-row">
+          <div class="quote-item">
+            <span class="label">BID</span>
+            <span class="value" [class]="bidClass()">{{ quote()!.bid }}</span>
           </div>
-
-          <div>
-            <div class="label">ASK</div>
-            <div class="value">{{ quote()!.ask }}</div>
+          <div class="quote-item">
+            <span class="label">ASK</span>
+            <span class="value">{{ quote()!.ask }}</span>
           </div>
-
-          <div>
-            <div class="label">Last update</div>
-            <div class="value small">{{ lastUpdateText() }}</div>
+          <div class="quote-item">
+            <span class="label">Updated</span>
+            <span class="value small">{{ lastUpdateText() }}</span>
           </div>
         </div>
       }

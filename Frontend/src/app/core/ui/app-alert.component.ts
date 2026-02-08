@@ -27,12 +27,18 @@ import { AppErrorsService } from '../services/app-errors.service';
       padding: 10px 12px;
       border-bottom: 1px solid #e5e7eb;
       background: #fff;
+      max-width: 100%;
+      overflow: hidden;
     }
     .alert[data-kind="error"]   { background: #fff1f2; color: #991b1b; border-color: #fecaca; }
     .alert[data-kind="warning"] { background: #fffbeb; color: #92400e; border-color: #fde68a; }
     .alert[data-kind="info"]    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 
-    .msg { font-size: 14px; }
+    .msg {
+      font-size: 14px;
+      min-width: 0;
+      word-break: break-word;
+    }
     .btn {
       border: 0;
       background: transparent;
@@ -41,6 +47,7 @@ import { AppErrorsService } from '../services/app-errors.service';
       line-height: 1;
       padding: 2px 6px;
       border-radius: 8px;
+      flex-shrink: 0;
     }
   `],
 })

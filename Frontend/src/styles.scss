@@ -1,1 +1,17 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global resets & responsive foundation */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
