@@ -45,21 +45,24 @@
 
     <section class="card">
       <div class="chart-header">
-        <div class="muted">Candles: {{ store.candlesCount() }} · {{ store.rangeLabel() }}</div>
-
         <div class="range">
-          <button class="btn" [class.active]="range() === '15m'" (click)="setRange('15m')">15m</button>
-          <button class="btn" [class.active]="range() === '1h'" (click)="setRange('1h')">1h</button>
-          <button class="btn" [class.active]="range() === '6h'" (click)="setRange('6h')">6h</button>
-          <button class="btn" [class.active]="range() === '24h'" (click)="setRange('24h')">24h</button>
+          <button class="btn" [disabled]="loadingCandles()" [class.active]="range() === '15m'" (click)="setRange('15m')">15m</button>
+          <button class="btn" [disabled]="loadingCandles()" [class.active]="range() === '1h'" (click)="setRange('1h')">1h</button>
+          <button class="btn" [disabled]="loadingCandles()" [class.active]="range() === '6h'" (click)="setRange('6h')">6h</button>
+          <button class="btn" [disabled]="loadingCandles()" [class.active]="range() === '24h'" (click)="setRange('24h')">24h</button>
         </div>
       </div>
 
-      @if (loadingCandles()) {
-        <div class="muted">Loading candles…</div>
-      }
-
-      <app-candlestick-chart />
+      <div class="chart-shell">
+        <app-candlestick-chart />
+      
+        @if (loadingCandles()) {
+          <div class="overlay">
+            <div class="spinner" aria-hidden="true"></div>
+            <div>Loading candles…</div>
+          </div>
+        }
+      </div>
     </section>
   </div>
 </div>

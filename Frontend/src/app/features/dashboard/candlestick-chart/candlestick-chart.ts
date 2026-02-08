@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, effect, ElementRef, inject, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, effect, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import {
   createChart,
   CandlestickSeries,
@@ -9,6 +9,7 @@ import {
   CrosshairMode,
 } from 'lightweight-charts';
 import { MarketStore } from '../state/market.store';
+import { format } from 'date-fns';
 
 @Component({
   selector: 'app-candlestick-chart',
@@ -18,26 +19,34 @@ import { MarketStore } from '../state/market.store';
 export class CandlestickChartComponent implements AfterViewInit {
   @ViewChild('container', { static: true }) containerRef!: ElementRef<HTMLDivElement>;
   @ViewChild('tooltip', { static: true }) tooltipRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('legend', { static: true }) legendRef!: ElementRef<HTMLDivElement>;
 
   private readonly store = inject(MarketStore);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly seriesSig = signal<ISeriesApi<'Candlestick'> | null>(null);
   private chart: IChartApi | null = null;
-  private series: ISeriesApi<'Candlestick'> | null = null;
 
   private lastRenderedLen = 0;
   private lastRenderedTs: number | null = null;
   private didFit = false;
 
+  private readonly priceFmt = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
   private readonly renderEffect = effect(() => {
     const candles = this.store.candles();
-    if (!this.series) return;
+    const series = this.seriesSig();
+    if (!series) return;
 
     if (candles.length === 0) {
-      this.series.setData([]);
+      series.setData([]);
       this.lastRenderedLen = 0;
       this.lastRenderedTs = null;
       this.didFit = false;
+      this.setLegendText('OHLC: —');
       return;
     }
 
@@ -45,37 +54,72 @@ export class CandlestickChartComponent implements AfterViewInit {
     const lastTs = last.timestamp;
 
     if (candles.length < this.lastRenderedLen || this.lastRenderedLen === 0) {
-      this.series.setData(candles.map(toData));
+      series.setData(candles.map(toData));
       this.lastRenderedLen = candles.length;
       this.lastRenderedTs = lastTs;
       this.chart?.timeScale().fitContent();
       this.didFit = true;
+
+      this.setLegendFromCandle({
+        time: last.timestamp,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      });
+
       return;
     }
 
     if (candles.length === this.lastRenderedLen && this.lastRenderedTs === lastTs) {
-      this.series.update(toData(last));
+      series.update(toData(last));
+      this.setLegendFromCandle({
+        time: last.timestamp,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      });
       return;
     }
 
     if (candles.length === this.lastRenderedLen + 1) {
-      this.series.update(toData(last));
+      series.update(toData(last));
       this.lastRenderedLen = candles.length;
       this.lastRenderedTs = lastTs;
+
       if (!this.didFit) {
         this.chart?.timeScale().fitContent();
         this.didFit = true;
       }
+
+      this.setLegendFromCandle({
+        time: last.timestamp,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      });
+
       return;
     }
 
-    this.series.setData(candles.map(toData));
+    series.setData(candles.map(toData));
     this.lastRenderedLen = candles.length;
     this.lastRenderedTs = lastTs;
+
     if (!this.didFit) {
       this.chart?.timeScale().fitContent();
       this.didFit = true;
     }
+
+    this.setLegendFromCandle({
+      time: last.timestamp,
+      open: last.open,
+      high: last.high,
+      low: last.low,
+      close: last.close,
+    });
   });
 
   ngAfterViewInit(): void {
@@ -89,34 +133,46 @@ export class CandlestickChartComponent implements AfterViewInit {
     });
 
     const series = chart.addSeries(CandlestickSeries, {});
-
+    this.seriesSig.set(series);
     this.chart = chart;
-    this.series = series;
 
     const tooltip = this.tooltipRef.nativeElement;
+
     chart.subscribeCrosshairMove((param) => {
-      if (!param?.time || !param.seriesData || !this.series) {
+      const activeSeries = this.seriesSig();
+
+      if (!activeSeries || !param?.time || !param.seriesData) {
         tooltip.style.display = 'none';
         return;
       }
-      const data = param.seriesData.get(this.series) as CandlestickData | undefined;
+
+      if (typeof param.time !== 'number') {
+        tooltip.style.display = 'none';
+        return;
+      }
+
+      const data = param.seriesData.get(activeSeries) as CandlestickData | undefined;
       if (!data) {
         tooltip.style.display = 'none';
         return;
       }
 
       tooltip.style.display = 'block';
-      tooltip.innerHTML =
-        `<div><b>O</b>: ${data.open}</div>` +
-        `<div><b>H</b>: ${data.high}</div>` +
-        `<div><b>L</b>: ${data.low}</div>` +
-        `<div><b>C</b>: ${data.close}</div>`;
+      tooltip.innerHTML = this.formatOHLC(param.time as number, data);
 
       const x = (param.point?.x ?? 0) + 12;
       const y = (param.point?.y ?? 0) + 12;
       tooltip.style.left = `${x}px`;
       tooltip.style.top = `${y}px`;
+
+      this.setLegendHtml(this.formatOHLC(param.time as number, data));
     });
+
+    const onLeave = () => {
+      tooltip.style.display = 'none';
+    };
+    container.addEventListener('mouseleave', onLeave);
+    this.destroyRef.onDestroy(() => container.removeEventListener('mouseleave', onLeave));
 
     const ro = new ResizeObserver(() => chart.applyOptions({}));
     ro.observe(container);
@@ -125,8 +181,37 @@ export class CandlestickChartComponent implements AfterViewInit {
     this.destroyRef.onDestroy(() => {
       chart.remove();
       this.chart = null;
-      this.series = null;
+      this.seriesSig.set(null);
     });
+  }
+
+  private formatOHLC(unixSeconds: number, data: CandlestickData): string {
+    const t = format(new Date(unixSeconds * 1000), 'HH:mm');
+    return (
+      `<div><b>${t}</b></div>` +
+      `<div><b>O</b>: ${this.priceFmt.format(data.open)}</div>` +
+      `<div><b>H</b>: ${this.priceFmt.format(data.high)}</div>` +
+      `<div><b>L</b>: ${this.priceFmt.format(data.low)}</div>` +
+      `<div><b>C</b>: ${this.priceFmt.format(data.close)}</div>`
+    );
+  }
+
+  private setLegendFromCandle(c: { time: number; open: number; high: number; low: number; close: number }) {
+    this.setLegendHtml(
+      `<div><b>${format(new Date(c.time * 1000), 'HH:mm')}</b></div>` +
+      `<div><b>O</b>: ${this.priceFmt.format(c.open)}</div>` +
+      `<div><b>H</b>: ${this.priceFmt.format(c.high)}</div>` +
+      `<div><b>L</b>: ${this.priceFmt.format(c.low)}</div>` +
+      `<div><b>C</b>: ${this.priceFmt.format(c.close)}</div>`
+    );
+  }
+
+  private setLegendText(text: string) {
+    this.legendRef.nativeElement.textContent = text;
+  }
+
+  private setLegendHtml(html: string) {
+    this.legendRef.nativeElement.innerHTML = html;
   }
 }
 

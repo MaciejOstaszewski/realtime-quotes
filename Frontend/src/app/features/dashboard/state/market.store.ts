@@ -44,6 +44,8 @@ export class MarketStore {
         return q ? format(new Date(q.timestamp * 1000), 'HH:mm:ss') : '—';
     });
 
+    private loadToken = 0;
+
     constructor() {
         this.ws.connect();
 
@@ -57,12 +59,20 @@ export class MarketStore {
 
         effect(() => {
             const r = this.range();
-            void this.loadCandles(r);
+            void this.loadCandles(this.range());
         });
     }
 
     setRange(range: RangeKey) {
-        this.state.update(s => setRange(s, range));
+        this.state.update(s => ({
+            ...s,
+            range,
+            candles: [],
+            loadingCandles: true,
+            lastError: null,
+        }));
+
+        void this.loadCandles(range);
     }
 
     private handleWsMessage(msg: WsMessage) {
@@ -79,18 +89,32 @@ export class MarketStore {
     }
 
     private async loadCandles(rangeKey: RangeKey) {
-        this.state.update(s => setLoading(s, true));
+        const token = ++this.loadToken;
 
         try {
             const r = computeUnixRange(rangeKey);
+
             const candles = await firstValueFrom(this.api.getCandles('BTCUSD', r.from, r.to));
 
-            this.state.update(s => setCandles(s, candles));
-            this.state.update(s => setError(s, null));
+            if (token !== this.loadToken) return;
+
+            const sorted = [...candles].sort((a, b) => a.timestamp - b.timestamp);
+
+            this.state.update(s => ({
+                ...s,
+                candles: sorted,
+                loadingCandles: false,
+                lastError: null,
+            }));
         } catch {
-            this.state.update(s => setError(s, 'Failed to fetch candles from backend.'));
-        } finally {
-            this.state.update(s => setLoading(s, false));
+            if (token !== this.loadToken) return;
+
+            this.state.update(s => ({
+                ...s,
+                candles: [],
+                loadingCandles: false,
+                lastError: 'Failed to fetch candles from backend.',
+            }));
         }
     }
 }
