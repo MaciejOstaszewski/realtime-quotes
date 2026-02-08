@@ -3,7 +3,7 @@ using System.Net.WebSockets;
 
 namespace Backend.WebSockets;
 
-public sealed class WsHub
+public sealed class WsHub : IWsHub
 {
     private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new();
 

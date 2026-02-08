@@ -24,6 +24,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddSingleton<CandleStore>();
 
 builder.Services.AddSingleton<WsHub>();
+builder.Services.AddSingleton<IWsHub>(sp => sp.GetRequiredService<WsHub>());
 builder.Services.AddSingleton<CandleAggregator>();
 builder.Services.AddSingleton<QuotePipeline>();
 builder.Services.AddHostedService<UpstreamQuotesService>();
@@ -45,3 +46,5 @@ app.MapQuotesWebSocket();
 app.MapCandlesEndpoints();
 
 app.Run();
+
+public partial class Program { }

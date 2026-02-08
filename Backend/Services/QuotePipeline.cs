@@ -7,12 +7,12 @@ namespace Backend.Services;
 
 public sealed class QuotePipeline
 {
-    private readonly WsHub _hub;
+    private readonly IWsHub _hub;
     private readonly JsonSerializerOptions _json;
     private readonly CandleAggregator _aggregator;
     private readonly CandleStore _store;
 
-    public QuotePipeline(WsHub hub, JsonSerializerOptions json, CandleAggregator aggregator, CandleStore store)
+    public QuotePipeline(IWsHub hub, JsonSerializerOptions json, CandleAggregator aggregator, CandleStore store)
     {
         _hub = hub;
         _json = json;
