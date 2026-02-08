@@ -28,6 +28,15 @@ export class MarketStore {
     readonly loadingCandles = computed(() => this.state().loadingCandles);
     readonly lastError = computed(() => this.state().lastError);
 
+    readonly candlesCount = computed(() => this.candles().length);
+
+    readonly rangeLabel = computed(() => {
+        const r = computeUnixRange(this.range());
+        const from = new Date(r.from * 1000);
+        const to = new Date(r.to * 1000);
+        return `${format(from, 'HH:mm')} – ${format(to, 'HH:mm')}`;
+    })
+
     readonly status = toSignal(this.ws.status$, { initialValue: 'disconnected' as const });
 
     readonly lastUpdateText = computed(() => {
@@ -79,7 +88,7 @@ export class MarketStore {
             this.state.update(s => setCandles(s, candles));
             this.state.update(s => setError(s, null));
         } catch {
-            this.state.update(s => setError(s, 'Nie udało się pobrać świeczek z backendu.'));
+            this.state.update(s => setError(s, 'Failed to fetch candles from backend.'));
         } finally {
             this.state.update(s => setLoading(s, false));
         }

@@ -1,32 +1,40 @@
 <div class="page">
-    <header class="header">
+  <header class="header">
+    <div>
       <h1>Market Dashboard</h1>
-  
-      <div class="status" [attr.data-status]="status()">
-        <span class="dot"></span>
-        <span>{{ status() }}</span>
-      </div>
-    </header>
-  
+      <p class="muted">BTCUSD live quotes + candles</p>
+    </div>
+
+    <div class="status" [attr.data-status]="status()">
+      <span class="dot"></span>
+      <span>{{ status() }}</span>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="error">{{ error() }}</div>
+  }
+
+  <div class="layout">
     <section class="card">
       <h2>BTCUSD</h2>
-  
-      @if (!btcQuote()) {
+
+      @if (!quote()) {
         <div class="muted">Waiting for quote…</div>
       } @else {
         <div class="grid">
           <div>
             <div class="label">BID</div>
-            <div class="value" [class.up]="bidTrend() === 'up'" [class.down]="bidTrend() === 'down'">
-              {{ btcQuote()!.bid }}
+            <div class="value" [class]="bidClass()">
+              {{ quote()!.bid }}
             </div>
           </div>
-  
+
           <div>
             <div class="label">ASK</div>
-            <div class="value">{{ btcQuote()!.ask }}</div>
+            <div class="value">{{ quote()!.ask }}</div>
           </div>
-  
+
           <div>
             <div class="label">Last update</div>
             <div class="value small">{{ lastUpdateText() }}</div>
@@ -34,5 +42,24 @@
         </div>
       }
     </section>
+
+    <section class="card">
+      <div class="chart-header">
+        <div class="muted">Candles: {{ store.candlesCount() }} · {{ store.rangeLabel() }}</div>
+
+        <div class="range">
+          <button class="btn" [class.active]="range() === '15m'" (click)="setRange('15m')">15m</button>
+          <button class="btn" [class.active]="range() === '1h'" (click)="setRange('1h')">1h</button>
+          <button class="btn" [class.active]="range() === '6h'" (click)="setRange('6h')">6h</button>
+          <button class="btn" [class.active]="range() === '24h'" (click)="setRange('24h')">24h</button>
+        </div>
+      </div>
+
+      @if (loadingCandles()) {
+        <div class="muted">Loading candles…</div>
+      }
+
+      <app-candlestick-chart />
+    </section>
   </div>
-  
+</div>

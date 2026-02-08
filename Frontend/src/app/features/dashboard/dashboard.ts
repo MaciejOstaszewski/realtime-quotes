@@ -5,6 +5,9 @@ import { Quote } from '../../core/models/quote';
 import { WsMessage } from '../../core/models/ws-message';
 import { ConnectionStatus, QuotesWsService } from '../../core/services/quotes-ws.service';
 import { filter, scan } from 'rxjs';
+import { MarketStore } from './state/market.store';
+import { RangeKey } from './state/market.types';
+import { CandlestickChartComponent } from './candlestick-chart/candlestick-chart';
 
 type Trend = 'up' | 'down' | 'same';
 
@@ -15,42 +18,28 @@ interface BtcState {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule],
+  imports: [CommonModule, CandlestickChartComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
-export class DashboardComponent implements OnInit {
-  private readonly ws = inject(QuotesWsService);
+export class DashboardComponent {
+  readonly store = inject(MarketStore);
 
-  readonly status = toSignal(this.ws.status$, { initialValue: 'disconnected' as const });
+  readonly quote = this.store.quote;
+  readonly trend = this.store.trend;
+  readonly status = this.store.status;
+  readonly lastUpdateText = this.store.lastUpdateText;
 
-  private readonly btcState$ = this.ws.messages$.pipe(
-    filter((msg: WsMessage): msg is Extract<WsMessage, { type: 'quote' }> => msg.type === 'quote'),
-    filter((msg) => msg.data.symbol === 'BTCUSD'),
-    scan((state: BtcState, msg) => {
-      const prevBid = state.quote?.bid;
-      const nextBid = msg.data.bid;
+  readonly error = this.store.lastError;
+  readonly range = this.store.range;
+  readonly loadingCandles = this.store.loadingCandles;
 
-      const trend: Trend =
-        prevBid == null ? 'same' :
-          nextBid > prevBid ? 'up' :
-            nextBid < prevBid ? 'down' : 'same';
-
-      return { quote: msg.data, trend };
-    }, { quote: null, trend: 'same' } satisfies BtcState)
-  );
-
-  readonly btcState = toSignal(this.btcState$, { initialValue: { quote: null, trend: 'same' } satisfies BtcState });
-
-  readonly btcQuote = computed(() => this.btcState().quote);
-  readonly bidTrend = computed(() => this.btcState().trend);
-
-  readonly lastUpdateText = computed(() => {
-    const quote = this.btcQuote();
-    return quote ? new Date(quote.timestamp * 1000).toLocaleTimeString() : '—';
+  readonly bidClass = computed(() => {
+    const t = this.trend();
+    return t === 'up' ? 'up' : t === 'down' ? 'down' : '';
   });
 
-  ngOnInit(): void {
-    this.ws.connect();
+  setRange(r: RangeKey) {
+    this.store.setRange(r);
   }
 }

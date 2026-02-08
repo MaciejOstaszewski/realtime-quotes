@@ -1,0 +1,14 @@
+.chart-wrap { position: relative; width: 100%; height: 420px; }
+.chart { width: 100%; height: 100%; }
+
+.tooltip {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  font-size: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
