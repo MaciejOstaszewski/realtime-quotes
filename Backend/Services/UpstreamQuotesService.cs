@@ -82,47 +82,88 @@ public sealed class UpstreamQuotesService : BackgroundService
 
     private async Task ReceiveLoop(ClientWebSocket ws, CancellationToken ct)
     {
-        while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+        try
         {
-            var msg = await ReceiveTextMessage(ws, ct);
-            if (msg is null) return;
-
-            try
+            while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
             {
-                using var doc = JsonDocument.Parse(msg);
+                var msg = await ReceiveTextMessage(ws, ct);
+                if (msg is null) return;
 
-                if (!doc.RootElement.TryGetProperty("p", out var pEl))
-                    continue;
-
-                if (!string.Equals(pEl.GetString(), "/quotes/subscribed", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                if (!doc.RootElement.TryGetProperty("d", out var dEl) || dEl.ValueKind != JsonValueKind.Array)
-                    continue;
-
-                foreach (var item in dEl.EnumerateArray())
-                {
-                    if (!item.TryGetProperty("s", out var sEl) ||
-                        !item.TryGetProperty("a", out var aEl) ||
-                        !item.TryGetProperty("b", out var bEl) ||
-                        !item.TryGetProperty("t", out var tEl))
-                        continue;
-
-                    var symbol = sEl.GetString();
-                    if (string.IsNullOrWhiteSpace(symbol))
-                        continue;
-
-                    var ask = aEl.GetDecimal();
-                    var bid = bEl.GetDecimal();
-                    var t = tEl.GetInt64();
-
-                    await _pipeline.HandleQuoteAsync(new Quote(symbol!, bid, ask, t), ct);
-                }
+                await TryHandleUpstreamMessage(msg, ct);
             }
-            catch (Exception ex)
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (WebSocketException ex)
+        {
+            _logger.LogWarning(ex, "Upstream websocket dropped (no close handshake). Reconnecting...");
+        }
+        catch (IOException ex)
+        {
+            _logger.LogWarning(ex, "Upstream connection reset. Reconnecting...");
+        }
+    }
+
+    private async Task TryHandleUpstreamMessage(string msg, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(msg);
+            var root = doc.RootElement;
+
+            if (!TryGetPath(root, out var path))
+                return;
+
+            if (!string.Equals(path, "/quotes/subscribed", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (!root.TryGetProperty("d", out var dEl) || dEl.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var quote in ParseQuotes(dEl))
             {
-                _logger.LogError(ex, "Failed to parse upstream message: {Msg}", msg);
+                await _pipeline.HandleQuoteAsync(quote, ct);
             }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Invalid JSON from upstream: {Msg}", msg);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process upstream message: {Msg}", msg);
+        }
+    }
+
+    private static bool TryGetPath(JsonElement root, out string? path)
+    {
+        path = null;
+        if (!root.TryGetProperty("p", out var pEl)) return false;
+        path = pEl.GetString();
+        return !string.IsNullOrWhiteSpace(path);
+    }
+
+    private static IEnumerable<Quote> ParseQuotes(JsonElement dEl)
+    {
+        foreach (var item in dEl.EnumerateArray())
+        {
+            if (!item.TryGetProperty("s", out var sEl) ||
+                !item.TryGetProperty("a", out var aEl) ||
+                !item.TryGetProperty("b", out var bEl) ||
+                !item.TryGetProperty("t", out var tEl))
+                continue;
+
+            var symbol = sEl.GetString();
+            if (string.IsNullOrWhiteSpace(symbol))
+                continue;
+
+            yield return new Quote(
+                Symbol: symbol!,
+                Bid: bEl.GetDecimal(),
+                Ask: aEl.GetDecimal(),
+                Timestamp: tEl.GetInt64()
+            );
         }
     }
 
