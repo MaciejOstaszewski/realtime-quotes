@@ -17,11 +17,12 @@ pnpm-debug.log*
 # .NET build artifacts
 **/bin/
 **/obj/
-
-# Visual Studio / IDE
 **/.vs/
 **/*.csproj.user
+
+# Visual Studio / IDE
 **/*.suo
 **/*.user
 **/*.userosscache
 **/*.sln.docstates
+
