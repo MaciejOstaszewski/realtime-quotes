@@ -83,7 +83,8 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\xaero\\.nuget\\packages\\": {}
+    "C:\\Users\\xaero\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
@@ -94,13 +95,19 @@
       "packagesPath": "C:\\Users\\xaero\\.nuget\\packages\\",
       "outputPath": "C:\\svn\\realtime-quotes\\Backend\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\xaero\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\xaero\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
