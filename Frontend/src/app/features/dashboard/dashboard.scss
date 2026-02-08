@@ -1,0 +1,66 @@
+.page {
+  padding: 16px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+}
+.status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #999;
+}
+.status[data-status='connected'] .dot {
+  background: #16a34a;
+}
+.status[data-status='connecting'] .dot {
+  background: #f59e0b;
+}
+.status[data-status='disconnected'] .dot {
+  background: #dc2626;
+}
+
+.card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.label {
+  font-size: 12px;
+  color: #6b7280;
+}
+.value {
+  font-size: 22px;
+  font-weight: 700;
+}
+.value.small {
+  font-size: 14px;
+  font-weight: 500;
+}
+.value.up {
+  color: #16a34a;
+}
+.value.down {
+  color: #dc2626;
+}
+.muted {
+  color: #6b7280;
+}

@@ -1,0 +1,38 @@
+<div class="page">
+    <header class="header">
+      <h1>Market Dashboard</h1>
+  
+      <div class="status" [attr.data-status]="status()">
+        <span class="dot"></span>
+        <span>{{ status() }}</span>
+      </div>
+    </header>
+  
+    <section class="card">
+      <h2>BTCUSD</h2>
+  
+      @if (!btcQuote()) {
+        <div class="muted">Waiting for quote…</div>
+      } @else {
+        <div class="grid">
+          <div>
+            <div class="label">BID</div>
+            <div class="value" [class.up]="bidTrend() === 'up'" [class.down]="bidTrend() === 'down'">
+              {{ btcQuote()!.bid }}
+            </div>
+          </div>
+  
+          <div>
+            <div class="label">ASK</div>
+            <div class="value">{{ btcQuote()!.ask }}</div>
+          </div>
+  
+          <div>
+            <div class="label">Last update</div>
+            <div class="value small">{{ lastUpdateText() }}</div>
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+  
