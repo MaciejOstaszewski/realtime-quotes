@@ -26,6 +26,7 @@ builder.Services.AddSingleton<CandleStore>();
 builder.Services.AddSingleton<WsHub>();
 builder.Services.AddSingleton<CandleAggregator>();
 builder.Services.AddSingleton<QuotePipeline>();
+builder.Services.AddHostedService<UpstreamQuotesService>();
 
 var app = builder.Build();
 
