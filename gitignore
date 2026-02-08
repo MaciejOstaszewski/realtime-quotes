@@ -26,3 +26,5 @@ pnpm-debug.log*
 **/*.userosscache
 **/*.sln.docstates
 
+**/bin/**
+**/obj/**
