@@ -9,6 +9,7 @@ import { applyCandle, applyQuote, setCandles, setError, setLoading, setRange } f
 import { WsMessage } from '../../../core/models/ws-message';
 import { CandlesApiService } from '../../../core/services/candles-api.service';
 import { QuotesWsService } from '../../../core/services/quotes-ws.service';
+import { AppErrorsService } from '../../../core/services/app-errors.service';
 
 @Injectable({ providedIn: 'root' })
 export class MarketStore {
@@ -29,6 +30,8 @@ export class MarketStore {
     readonly lastError = computed(() => this.state().lastError);
 
     readonly candlesCount = computed(() => this.candles().length);
+
+    private readonly errors = inject(AppErrorsService);
 
     readonly rangeLabel = computed(() => {
         const r = computeUnixRange(this.range());
@@ -51,7 +54,9 @@ export class MarketStore {
 
         this.ws.error$
             .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((err) => this.state.update(s => setError(s, err)));
+            .subscribe((err) => {
+                if (err) this.errors.show(err, 'warning');
+            });
 
         this.ws.messages$
             .pipe(takeUntilDestroyed(this.destroyRef))
