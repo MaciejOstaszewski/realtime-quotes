@@ -1,7 +1,8 @@
 using System.Text.Json;
+using Backend.Endpoints;
+using Backend.Middleware;
 using Backend.Services;
 using Backend.WebSockets;
-using Backend.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,7 @@ builder.Services.AddHostedService<UpstreamQuotesService>();
 
 var app = builder.Build();
 
+app.UseGlobalExceptionHandler();
 app.UseCors("Frontend");
 app.UseWebSockets();
 
