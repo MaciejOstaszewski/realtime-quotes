@@ -23,7 +23,6 @@ public class CandleAggregatorTests
     [Fact]
     public void QuotesInSameMinute_UpdateOHLC_ReturnNull()
     {
-        long minute = 1_000_000_020;
         long ts = 1_700_000_100;
 
         Assert.Null(_sut.ProcessQuote(MakeQuote("BTCUSD", 100m, ts)));      // open
@@ -113,5 +112,64 @@ public class CandleAggregatorTests
 
         Assert.NotNull(closed);
         Assert.Equal(10, closed.Volume);
+    }
+
+    [Fact]
+    public void CandleTimestamp_IsFlooredToMinuteStart()
+    {
+        long ts = 1_700_000_123;
+        _sut.ProcessQuote(MakeQuote("BTCUSD", 100m, ts));
+
+        var closed = _sut.ProcessQuote(MakeQuote("BTCUSD", 200m, ts + 60));
+
+        Assert.NotNull(closed);
+
+        var expectedMinute = (ts / 60) * 60;
+        Assert.Equal(expectedMinute, closed.Timestamp);
+    }
+
+    [Fact]
+    public void GapOfMinutes_DoesNotCreateEmptyCandles()
+    {
+        long ts = 1_700_000_100;
+        _sut.ProcessQuote(MakeQuote("BTCUSD", 100m, ts));
+        _sut.ProcessQuote(MakeQuote("BTCUSD", 110m, ts + 10));
+
+        var closed = _sut.ProcessQuote(MakeQuote("BTCUSD", 200m, ts + 180));
+
+        Assert.NotNull(closed);
+        Assert.Equal((ts / 60) * 60, closed.Timestamp);
+        Assert.Equal(100m, closed.Open);
+        Assert.Equal(110m, closed.High);
+        Assert.Equal(100m, closed.Low);
+        Assert.Equal(110m, closed.Close);
+        Assert.Equal(2, closed.Volume);
+
+        var resultSameMinute = _sut.ProcessQuote(MakeQuote("BTCUSD", 210m, ts + 190));
+        Assert.Null(resultSameMinute);
+
+        var nextClosed = _sut.ProcessQuote(MakeQuote("BTCUSD", 300m, ts + 240));
+        Assert.NotNull(nextClosed);
+        Assert.Equal(((ts + 180) / 60) * 60, nextClosed.Timestamp);
+    }
+
+    [Fact]
+    public void EachMinuteBoundary_ClosesPreviousCandle()
+    {
+        long ts = 1_700_000_100;
+
+        Assert.Null(_sut.ProcessQuote(MakeQuote("BTCUSD", 100m, ts)));
+
+        var c1 = _sut.ProcessQuote(MakeQuote("BTCUSD", 200m, ts + 60));
+        Assert.NotNull(c1);
+        Assert.Equal((ts / 60) * 60, c1.Timestamp);
+
+        var c2 = _sut.ProcessQuote(MakeQuote("BTCUSD", 300m, ts + 120));
+        Assert.NotNull(c2);
+        Assert.Equal(((ts + 60) / 60) * 60, c2.Timestamp);
+
+        var c3 = _sut.ProcessQuote(MakeQuote("BTCUSD", 400m, ts + 180));
+        Assert.NotNull(c3);
+        Assert.Equal(((ts + 120) / 60) * 60, c3.Timestamp);
     }
 }
