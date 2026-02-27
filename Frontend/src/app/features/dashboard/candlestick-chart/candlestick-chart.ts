@@ -9,7 +9,15 @@ import {
   CrosshairMode,
 } from 'lightweight-charts';
 import { MarketStore } from '../state/market.store';
+import { Candle } from '../../../core/models/candle';
 import { format } from 'date-fns';
+
+interface OHLCData {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
 
 @Component({
   selector: 'app-candlestick-chart',
@@ -51,75 +59,31 @@ export class CandlestickChartComponent implements AfterViewInit {
     }
 
     const last = candles[candles.length - 1];
-    const lastTs = last.timestamp;
+    const isUpdateInPlace = candles.length === this.lastRenderedLen && last.timestamp === this.lastRenderedTs;
+    const isAppend = candles.length === this.lastRenderedLen + 1;
+    const needsFullRedraw = candles.length < this.lastRenderedLen || this.lastRenderedLen === 0;
 
-    if (candles.length < this.lastRenderedLen || this.lastRenderedLen === 0) {
-      series.setData(candles.map(toData));
-      this.lastRenderedLen = candles.length;
-      this.lastRenderedTs = lastTs;
-      this.chart?.timeScale().fitContent();
-      this.didFit = true;
-
-      this.setLegendFromCandle({
-        time: last.timestamp,
-        open: last.open,
-        high: last.high,
-        low: last.low,
-        close: last.close,
-      });
-
-      return;
-    }
-
-    if (candles.length === this.lastRenderedLen && this.lastRenderedTs === lastTs) {
+    if (isUpdateInPlace) {
       series.update(toData(last));
-      this.setLegendFromCandle({
-        time: last.timestamp,
-        open: last.open,
-        high: last.high,
-        low: last.low,
-        close: last.close,
-      });
-      return;
-    }
-
-    if (candles.length === this.lastRenderedLen + 1) {
+    } else if (isAppend) {
       series.update(toData(last));
       this.lastRenderedLen = candles.length;
-      this.lastRenderedTs = lastTs;
-
+      this.lastRenderedTs = last.timestamp;
       if (!this.didFit) {
         this.chart?.timeScale().fitContent();
         this.didFit = true;
       }
-
-      this.setLegendFromCandle({
-        time: last.timestamp,
-        open: last.open,
-        high: last.high,
-        low: last.low,
-        close: last.close,
-      });
-
-      return;
+    } else {
+      series.setData(candles.map(toData));
+      this.lastRenderedLen = candles.length;
+      this.lastRenderedTs = last.timestamp;
+      if (!this.didFit || needsFullRedraw) {
+        this.chart?.timeScale().fitContent();
+        this.didFit = true;
+      }
     }
 
-    series.setData(candles.map(toData));
-    this.lastRenderedLen = candles.length;
-    this.lastRenderedTs = lastTs;
-
-    if (!this.didFit) {
-      this.chart?.timeScale().fitContent();
-      this.didFit = true;
-    }
-
-    this.setLegendFromCandle({
-      time: last.timestamp,
-      open: last.open,
-      high: last.high,
-      low: last.low,
-      close: last.close,
-    });
+    this.setLegendFromCandle(last);
   });
 
   ngAfterViewInit(): void {
@@ -151,21 +115,23 @@ export class CandlestickChartComponent implements AfterViewInit {
         return;
       }
 
-      const data = param.seriesData.get(activeSeries) as CandlestickData | undefined;
-      if (!data) {
+      const timeSeconds: number = param.time;
+      const rawData = param.seriesData.get(activeSeries);
+
+      if (!isOHLCData(rawData)) {
         tooltip.style.display = 'none';
         return;
       }
 
       tooltip.style.display = 'block';
-      tooltip.innerHTML = this.formatOHLC(param.time as number, data);
+      this.setOHLCContent(tooltip, timeSeconds, rawData);
 
       const x = (param.point?.x ?? 0) + 12;
       const y = (param.point?.y ?? 0) + 12;
       tooltip.style.left = `${x}px`;
       tooltip.style.top = `${y}px`;
 
-      this.setLegendHtml(this.formatOHLC(param.time as number, data));
+      this.setOHLCContent(this.legendRef.nativeElement, timeSeconds, rawData);
     });
 
     const onLeave = () => {
@@ -185,37 +151,51 @@ export class CandlestickChartComponent implements AfterViewInit {
     });
   }
 
-  private formatOHLC(unixSeconds: number, data: CandlestickData): string {
-    const t = format(new Date(unixSeconds * 1000), 'HH:mm');
-    return (
-      `<div><b>${t}</b></div>` +
-      `<div><b>O</b>: ${this.priceFmt.format(data.open)}</div>` +
-      `<div><b>H</b>: ${this.priceFmt.format(data.high)}</div>` +
-      `<div><b>L</b>: ${this.priceFmt.format(data.low)}</div>` +
-      `<div><b>C</b>: ${this.priceFmt.format(data.close)}</div>`
-    );
-  }
-
-  private setLegendFromCandle(c: { time: number; open: number; high: number; low: number; close: number }) {
-    this.setLegendHtml(
-      `<div><b>${format(new Date(c.time * 1000), 'HH:mm')}</b></div>` +
-      `<div><b>O</b>: ${this.priceFmt.format(c.open)}</div>` +
-      `<div><b>H</b>: ${this.priceFmt.format(c.high)}</div>` +
-      `<div><b>L</b>: ${this.priceFmt.format(c.low)}</div>` +
-      `<div><b>C</b>: ${this.priceFmt.format(c.close)}</div>`
-    );
+  private setLegendFromCandle(candle: Candle): void {
+    this.setOHLCContent(this.legendRef.nativeElement, candle.timestamp, candle);
   }
 
   private setLegendText(text: string) {
     this.legendRef.nativeElement.textContent = text;
   }
 
-  private setLegendHtml(html: string) {
-    this.legendRef.nativeElement.innerHTML = html;
+  private setOHLCContent(el: HTMLElement, timeSeconds: number, data: OHLCData): void {
+    el.replaceChildren();
+
+    const timeDiv = document.createElement('div');
+    const tb = document.createElement('b');
+    tb.textContent = format(new Date(timeSeconds * 1000), 'HH:mm');
+    timeDiv.appendChild(tb);
+    el.appendChild(timeDiv);
+
+    const fields: [string, number][] = [
+      ['O', data.open],
+      ['H', data.high],
+      ['L', data.low],
+      ['C', data.close],
+    ];
+
+    for (const [label, value] of fields) {
+      const div = document.createElement('div');
+      const b = document.createElement('b');
+      b.textContent = label;
+      div.appendChild(b);
+      div.appendChild(document.createTextNode(`: ${this.priceFmt.format(value)}`));
+      el.appendChild(div);
+    }
   }
 }
 
-function toData(c: { timestamp: number; open: number; high: number; low: number; close: number }): CandlestickData {
+function isOHLCData(value: unknown): value is OHLCData {
+  if (typeof value !== 'object' || value === null) return false;
+  const d = value as Record<string, unknown>;
+  return typeof d['open'] === 'number'
+    && typeof d['high'] === 'number'
+    && typeof d['low'] === 'number'
+    && typeof d['close'] === 'number';
+}
+
+function toData(c: Candle): CandlestickData {
   return {
     time: c.timestamp as UTCTimestamp,
     open: c.open,

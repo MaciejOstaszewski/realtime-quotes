@@ -38,7 +38,7 @@ export class MarketStore {
         const from = new Date(r.from * 1000);
         const to = new Date(r.to * 1000);
         return `${format(from, 'HH:mm')} – ${format(to, 'HH:mm')}`;
-    })
+    });
 
     readonly status = toSignal(this.ws.status$, { initialValue: 'disconnected' as const });
 
@@ -63,21 +63,17 @@ export class MarketStore {
             .subscribe((msg: WsMessage) => this.handleWsMessage(msg));
 
         effect(() => {
-            const r = this.range();
             void this.loadCandles(this.range());
         });
     }
 
     setRange(range: RangeKey) {
         this.state.update(s => ({
-            ...s,
-            range,
+            ...setRange(s, range),
             candles: [],
             loadingCandles: true,
             lastError: null,
         }));
-
-        void this.loadCandles(range);
     }
 
     private handleWsMessage(msg: WsMessage) {
@@ -95,6 +91,7 @@ export class MarketStore {
 
     private async loadCandles(rangeKey: RangeKey) {
         const token = ++this.loadToken;
+        this.state.update(s => setLoading(s, true));
 
         try {
             const r = computeUnixRange(rangeKey);
@@ -103,11 +100,8 @@ export class MarketStore {
 
             if (token !== this.loadToken) return;
 
-            const sorted = [...candles].sort((a, b) => a.timestamp - b.timestamp);
-
             this.state.update(s => ({
-                ...s,
-                candles: sorted,
+                ...setCandles(s, candles),
                 loadingCandles: false,
                 lastError: null,
             }));
@@ -115,10 +109,9 @@ export class MarketStore {
             if (token !== this.loadToken) return;
 
             this.state.update(s => ({
-                ...s,
+                ...setError(s, 'Failed to fetch candles from backend.'),
                 candles: [],
                 loadingCandles: false,
-                lastError: 'Failed to fetch candles from backend.',
             }));
         }
     }

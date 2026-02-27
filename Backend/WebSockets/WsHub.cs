@@ -6,6 +6,12 @@ namespace Backend.WebSockets;
 public sealed class WsHub : IWsHub
 {
     private readonly ConcurrentDictionary<Guid, WebSocket> _clients = new();
+    private readonly ILogger<WsHub> _logger;
+
+    public WsHub(ILogger<WsHub> logger)
+    {
+        _logger = logger;
+    }
 
     public Guid Register(WebSocket socket)
     {
@@ -44,8 +50,9 @@ public sealed class WsHub : IWsHub
             {
                 await socket.SendAsync(payload, WebSocketMessageType.Text, endOfMessage: true, ct);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Failed to send to client {ClientId}; removing from hub.", id);
                 _clients.TryRemove(id, out _);
             }
         }
