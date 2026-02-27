@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AppErrorsService } from '../services/app-errors.service';
@@ -6,7 +5,6 @@ import { AppErrorsService } from '../services/app-errors.service';
 @Component({
     standalone: true,
     selector: 'app-alert',
-    imports: [CommonModule],
     template: `
   @if (alert()) {
     <div class="alert" [attr.data-kind]="alert()!.kind">

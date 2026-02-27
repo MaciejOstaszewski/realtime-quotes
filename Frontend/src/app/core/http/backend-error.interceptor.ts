@@ -26,14 +26,9 @@ function toUserMessage(err: HttpErrorResponse): string {
         return `No connection to backend. Make sure it is running at ${environment.backendHttpBaseUrl}.`;
     }
 
-    const body: any = err.error;
-    if (body && typeof body === 'object' && typeof body.error === 'string' && body.error.trim()) {
-        return body.error;
-    }
-
-    if (typeof body === 'string' && body.trim()) {
-        return body;
-    }
+    const body: unknown = err.error;
+    const extracted = extractErrorMessage(body);
+    if (extracted) return extracted;
 
     if (err.status >= 500) return 'Server error. Try again later.';
     if (err.status === 404) return 'Resource not found (404).';
@@ -42,4 +37,17 @@ function toUserMessage(err: HttpErrorResponse): string {
     if (err.status === 400) return 'Bad request (400).';
 
     return `Request error (HTTP ${err.status}).`;
+}
+
+function extractErrorMessage(body: unknown): string | null {
+    if (typeof body === 'string' && body.trim()) return body.trim();
+
+    if (body !== null && typeof body === 'object') {
+        const obj = body as Record<string, unknown>;
+        if (typeof obj['error'] === 'string' && obj['error'].trim()) {
+            return obj['error'].trim();
+        }
+    }
+
+    return null;
 }

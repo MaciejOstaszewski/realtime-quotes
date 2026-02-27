@@ -1,24 +1,11 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { Quote } from '../../core/models/quote';
-import { WsMessage } from '../../core/models/ws-message';
-import { ConnectionStatus, QuotesWsService } from '../../core/services/quotes-ws.service';
-import { filter, scan } from 'rxjs';
+import { Component, computed, inject } from '@angular/core';
 import { MarketStore } from './state/market.store';
 import { RangeKey } from './state/market.types';
 import { CandlestickChartComponent } from './candlestick-chart/candlestick-chart';
 
-type Trend = 'up' | 'down' | 'same';
-
-interface BtcState {
-  quote: Quote | null;
-  trend: Trend;
-}
-
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, CandlestickChartComponent],
+  imports: [CandlestickChartComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
